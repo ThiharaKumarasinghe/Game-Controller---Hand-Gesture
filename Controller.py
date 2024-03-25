@@ -8,8 +8,14 @@ cap = cv2.VideoCapture(0)
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.3)
+hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 mp_drawing = mp.solutions.drawing_utils
+
+# Initialize key states
+w_pressed = False
+s_pressed = False
+a_pressed = False
+d_pressed = False
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -26,26 +32,41 @@ while cap.isOpened():
     results = hands.process(rgb_frame)
 
     if results.multi_hand_landmarks:
-        # Draw hand landmarks on the frame
         for hand_landmarks in results.multi_hand_landmarks:
+            # Draw hand landmarks on the frame
             mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
+            # Get the landmarks of the hand
             thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
-            index_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
             middle_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
-            ring_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP]
-            pinky_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
 
-            is_hand_closed = (
-                index_finger_tip.y > thumb_tip.y and
-                middle_finger_tip.y > thumb_tip.y and
-                ring_finger_tip.y > thumb_tip.y and
-                pinky_finger_tip.y > thumb_tip.y
-            )
+            # Check if hand is open or closed
+            if thumb_tip.y > middle_finger_tip.y:  # Hand open
+                if w_pressed:
+                    pyautogui.keyUp('w')
+                    w_pressed = False
+                pyautogui.press('s')
+                s_pressed = True
+            else:  # Hand closed
+                if s_pressed:
+                    pyautogui.keyUp('s')
+                    s_pressed = False
+                pyautogui.press('w')
+                w_pressed = True
 
-            if is_hand_closed:
-                pyautogui.press('space')
-                time.sleep(0.5)  # Add a delay to prevent repeated key presses
+            # Check hand movement to left or right
+            # if thumb_tip.x > middle_finger_tip.x:  # Hand moved right
+            #     if a_pressed:
+            #         pyautogui.keyUp('a')
+            #         a_pressed = False
+            #     pyautogui.press('d')
+            #     d_pressed = True
+            # else:  # Hand moved left
+            #     if d_pressed:
+            #         pyautogui.keyUp('d')
+            #         d_pressed = False
+            #     pyautogui.press('a')
+            #     a_pressed = True
 
     # Display the frame
     cv2.imshow('Hand Detection', frame)
@@ -57,5 +78,3 @@ while cap.isOpened():
 # Release resources
 cap.release()
 cv2.destroyAllWindows()
-
-
